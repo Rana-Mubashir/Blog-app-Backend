@@ -12,9 +12,8 @@ const postSchema = new Schema(
         createdBy: {
             type: Schema.Types.ObjectId,
             ref: "User",
-            required: trusted,
+            required: true,
         },
-
     },
     {
         timestamps: true
