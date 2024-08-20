@@ -112,81 +112,97 @@ async function updatePost(req, res) {
 
 async function getAllPosts(req, res) {
     try {
-        const allPosts = await Post.aggregate(
-            [
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "createdBy",
-                        foreignField: "_id",
-                        as: "userData"
-                    },
-                },
-                {
-                    $unwind: "$userData"
-                },
-                {
-                    $lookup: {
-                        from: "comments",
-                        localField: "_id",
-                        foreignField: "postId",
-                        as: "postComment",
-                    }
-                },
-                {
-                    $unwind: "$postComment"
-                },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "postComment.userId",
-                        foreignField: "_id",
-                        as: "commentBy"
-                    }
-                },
-                {
-                    $unwind: "$commentBy"
-                },
-                {
-                    $project: {
-                        _id: 1,
-                        description: 1,
-                        image: 1,
-                        createdAt: "$userData.createdAt",
-                        username: "$userData.username",
-                        profileImage: "$userData.image",
-                        comment:
-                        {
-                            _id: "$postComment._id",
-                            comment: "$postComment._comment",
-                            createdAt: "$postComment.createdAt",
-                            username: "$commentBy.username",
-                            profileImage: "$commentBy.image"
+        const allPosts = await Post.aggregate([
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "createdBy",
+                    foreignField: "_id",
+                    as: "userData"
+                }
+            },
+            {
+                $unwind: "$userData"
+            },
+            {
+                $lookup: {
+                    from: "comments",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "postComments",
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "postComments.userId",
+                    foreignField: "_id",
+                    as: "commentUsers"
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    description: 1,
+                    image: 1,
+                    createdAt: 1,
+                    username: "$userData.username",
+                    profileImage: "$userData.image",
+                    comments: {
+                        $map: {
+                            input: "$postComments",
+                            as: "comment",
+                            in: {
+                                _id: "$$comment._id",
+                                comment: "$$comment.comment",
+                                createdAt: "$$comment.createdAt",
+                                userData: {
+                                    $arrayElemAt: [
+                                        {
+                                            $map: {
+                                                input: {
+                                                    $filter: {
+                                                        input: "$commentUsers",
+                                                        as: "user",
+                                                        cond: { $eq: ["$$user._id", "$$comment.userId"] }
+                                                    }
+                                                },
+                                                as: "filteredUser",
+                                                in: {
+                                                    username: "$$filteredUser.username",
+                                                    image: "$$filteredUser.image"
+                                                }
+                                            }
+                                        },
+                                        0
+                                    ]
+                                }
+                            }
                         }
-
                     }
-                },
-            ]
-        )
+                }
+            }
+        ]);
 
-        if (!allPosts) {
+        if (!allPosts.length) {
             return res.status(404).json({
                 message: "No Posts found"
-            })
+            });
         }
 
         return res.status(200).json({
-            message: "Posts found sucessfully",
+            message: "Posts found successfully",
             allPosts
-        })
+        });
 
     } catch (error) {
         return res.status(500).json({
             message: "Internal server error",
             error: error.message
-        })
+        });
     }
 }
+
 
 async function getUserAllPosts(req, res) {
     try {
@@ -210,11 +226,27 @@ async function getUserAllPosts(req, res) {
                     from: "users",
                     localField: "createdBy",
                     foreignField: "_id",
-                    as: "userData",
-                },
+                    as: "userData"
+                }
             },
             {
-                $unwind: "$userData",
+                $unwind: "$userData"
+            },
+            {
+                $lookup: {
+                    from: "comments",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "postComments",
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "postComments.userId",
+                    foreignField: "_id",
+                    as: "commentUsers"
+                }
             },
             {
                 $project: {
@@ -222,13 +254,42 @@ async function getUserAllPosts(req, res) {
                     description: 1,
                     image: 1,
                     createdAt: 1,
-                    userData: {
-                        username: "$userData.username",
-                        image: "$userData.image"
+                    username: "$userData.username",
+                    profileImage: "$userData.image",
+                    comments: {
+                        $map: {
+                            input: "$postComments",
+                            as: "comment",
+                            in: {
+                                _id: "$$comment._id",
+                                comment: "$$comment.comment",
+                                createdAt: "$$comment.createdAt",
+                                userData: {
+                                    $arrayElemAt: [
+                                        {
+                                            $map: {
+                                                input: {
+                                                    $filter: {
+                                                        input: "$commentUsers",
+                                                        as: "user",
+                                                        cond: { $eq: ["$$user._id", "$$comment.userId"] }
+                                                    }
+                                                },
+                                                as: "filteredUser",
+                                                in: {
+                                                    username: "$$filteredUser.username",
+                                                    image: "$$filteredUser.image"
+                                                }
+                                            }
+                                        },
+                                        0
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
-
         ])
 
         if (userPosts.length === 0) {
