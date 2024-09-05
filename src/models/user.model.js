@@ -15,12 +15,18 @@ const userSchema=new Schema({
         type:String,
         required:true,
     },
+    gender:{
+        type:String,
+        required:true
+    },
+    dateOfBirth:{
+        type:Date,
+        required:true
+    },
     profileImg:{
         type:String
     },
-    coverImg:{
-        type:String,
-    }
+    
 })
 
 export const User= model("User",userSchema)
