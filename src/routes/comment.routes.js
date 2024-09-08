@@ -5,5 +5,4 @@ const commentRouter=Router();
 
 commentRouter.post("/create",createComment)
 
-
 export default commentRouter
