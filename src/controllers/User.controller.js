@@ -4,10 +4,11 @@ import jwt from 'jsonwebtoken'
 
 async function createUser(req, res) {
     try {
-        const { username, email, password, gender, dateOfBirth, profileImg } = req.body;
-
+        const { firstName, lastName, email, password, gender, dateOfBirth } = req.body;
+        console.log("req.body", req.body)
         if (
-            !username ||
+            !firstName ||
+            !lastName ||
             !email ||
             !password ||
             !gender ||
@@ -20,10 +21,13 @@ async function createUser(req, res) {
 
         const checkUser = await User.findOne({
             $or: [
-                { username: username },
+                {
+                    firstName: firstName,
+                    lastName: lastName
+                },
                 { email: email }
             ]
-        })
+        });
 
         if (checkUser) {
             return res.status(409).json({
@@ -35,7 +39,8 @@ async function createUser(req, res) {
 
         const createdUser = await User.create(
             {
-                username,
+                firstName,
+                lastName,
                 email,
                 password: hashedPassword,
                 gender,
@@ -126,12 +131,14 @@ async function logout(req, res) {
             })
         }
 
-
-
     }
     catch (error) {
-
+           return res.status(500).json({
+            message:"Internal server error",
+            error:error.message
+           })
     }
 }
+
 
 export { createUser, loginUser }
